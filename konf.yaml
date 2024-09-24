@@ -1,0 +1,3 @@
+user: Anya
+path_vm: file_system.tar
+start_script: script.sh
