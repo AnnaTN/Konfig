@@ -27,22 +27,18 @@ class main:
 
     # команда ls
     def _ls(self, append_path=""):
-        # Получаем полный путь
+        # получаем полный путь к директории, содержимое которой хотим вывести
         path = self.get_path(append_path)
-        elems = []  # Список для хранения имен элементов
+        elems = []
 
-        # Открываем tar-файл
         with tarfile.open(self.config["path_vm"], "r") as tar:
+            # проходимся по всем членам исходного архива
             for member in tar.getmembers():
-                # Если имя элемента начинается с нужного пути
-                if member.name.startswith(path):
-                    # Извлекаем имя элемента
-                    elem_name = member.name.split("/")[path.count("/")]
-                    # Добавляем имя элемента, если его там еще нет
+                if member.name.startswith(path): # проверка, начинается ли имя с нужного пути
+                    elem_name = member.name.split("/")[path.count("/")] # получаем имя конкретного файла
                     if elem_name not in elems:
                         elems.append(elem_name)
 
-        # Возвращаем имена элементов в виде строки, разделенной новой строкой
         return "\n".join(elems)
 
     def _cd(self, path):
