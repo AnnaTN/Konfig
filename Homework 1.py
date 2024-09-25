@@ -1,140 +1,74 @@
-import csv
 import threading
 import tarfile
 import yaml
-import json
-from datetime import datetime
-import zipfile
-import tkinter as tk
-from tkinter import scrolledtext
+from console import Console  # Импортируем класс Console из другого файла
 
+class main:
 
-class Console:
-    bg_color = "#2e2e2e"
-    text_color = "#ffffff"
-    prompt_color = "#00ff00"
-    prompt_user_color = "#00ff00"
-    prompt_path_color = "#00bfff"
-
-    def __init__(self, cmd_callback):
-        self.cmd_callback = cmd_callback
-        self.path = "/"
-
-        self.root = tk.Tk()
-        self.root.title("Not Bash")
-
-        self.console = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, height=20, width=70,
-                                                 bg=self.bg_color, fg=self.text_color,
-                                                 insertbackground=self.text_color)
-        self.console.grid(row=0, column=0, padx=0, pady=0)
-        self.console.bind('<Return>', self.execute_command)
-        self.console.config(font=("Courier New", 12))
-
-        self.console.tag_configure("user", foreground=self.prompt_user_color)
-        self.console.tag_configure("path", foreground=self.prompt_path_color)
-
-    def execute_command(self, event):
-        input_text = self.console.get("1.0", tk.END)
-
-        command = input_text.split("\n")[-2].strip()
-        command = command.split("$")[1].strip()
-
-        if command == "exit":
-            self.root.quit()
-            return
-
-        self.console.insert(tk.END, "\n")
-        self.cmd_callback(command)
-
-        return "break"
-
-    def print(self, text=""):
-        self.console.insert(tk.END, f"{text}\n")
-
-    def insert_prompt(self):
-        self.console.insert(tk.END, f"{self.user}@computer", "user")
-        self.console.insert(tk.END, f":{self.path}", "path")
-        self.console.insert(tk.END, "$ ")
-        self.console.mark_set("insert", tk.END)
-
-    def set_path(self, path):
-        self.path = path
-
-    def run(self):
-        self.root.mainloop()
-
-
-class NotBash:
-    path = "/"
     config = {
-        "path_vm": "",
-        "start_script": "",
-        "user": "user"
+        "path_vm": "", # путь к виртуальной файловой системе
+        "start_script": "", # путь к стартовому скрипту
+        "user": ""
     }
 
     def __init__(self):
-        self.console = Console(self.cmd_processing)
+        # указываем, что команда, переданная в кач-ве аргумента, будет передана методу perform_command для обработки
+        self.console = Console(self.perform_command)
 
-        # Load config
+        # загрузка конфигурации
         with open('./konf.yaml') as f:
             self.config = yaml.safe_load(f)
 
-        # Set current path
+        # установка пути и пользователя для консоли
         self.path = self.config["path_vm"].replace(".tar", "") + "/"
-
-        # Check required keys
-        required_keys = ["user", "path_vm", "start_script"]
-        for key in required_keys:
-            if key not in self.config:
-                raise KeyError(f"Missing key in config: {key}")
-
         self.console.user = self.config["user"]
 
-    # --- Commands processing ---
+# Методы обработки команд
 
+    # команда ls
     def _ls(self, append_path=""):
+        # Получаем полный путь
         path = self.get_path(append_path)
-        elems = set()
+        elems = []  # Список для хранения имен элементов
+
+        # Открываем tar-файл
         with tarfile.open(self.config["path_vm"], "r") as tar:
             for member in tar.getmembers():
-                if not member.name.startswith(path):
-                    continue
-                elems.add(member.name.split("/")[path.count("/")])
+                # Если имя элемента начинается с нужного пути
+                if member.name.startswith(path):
+                    # Извлекаем имя элемента
+                    elem_name = member.name.split("/")[path.count("/")]
+                    # Добавляем имя элемента, если его там еще нет
+                    if elem_name not in elems:
+                        elems.append(elem_name)
 
+        # Возвращаем имена элементов в виде строки, разделенной новой строкой
         return "\n".join(elems)
 
     def _cd(self, path):
         self.path = self.path.replace("//", "/")
 
-        # Преобразуем путь в список
         if isinstance(path, str):
             path = path.split("/")
 
-        # Проверка на пустой путь
         if not path or (len(path) == 1 and path[0] == ""):
-            return  # Ничего не делаем, если путь пустой
+            return
 
-        # Обработка ".."
         if path[0] == "..":
-            # Если текущий путь не корень, то переходим на уровень выше
             if self.path != "/":
                 self.path = "/".join(self.path.split("/")[:-2]) + "/"
-            return self._cd(path[1:])  # Рекурсивный вызов для остальных частей пути
+            return self._cd(path[1:])
 
-        # Остальные случаи: обработка ".", переход в директорию
         if path[0] == ".":
             return self._cd(path[1:])
 
-        # Обработка перехода в директорию
         with tarfile.open(self.config["path_vm"], "r") as tar:
             for member in tar.getmembers():
-                # Проверяем, существует ли директория по указанному пути
                 if member.name == self.path + "/".join(path) and member.isdir():
                     break
             else:
-                return "No such directory"  # Если директория не найдена
+                return "No such directory"
 
-        # Обновляем текущий путь
         self.path += "/".join(path) + "/"
         self.path = self.path.replace("//", "/")
 
@@ -152,38 +86,13 @@ class NotBash:
                 lines = [line.decode("utf-8") for line in lines]
                 return "".join(lines[-min(len(lines), 10):])
 
-    def _du(self, path=""):
-        path = self.get_path(path)[:-1]
-        with tarfile.open(self.config["path_vm"], "r") as tar:
-            for member in tar.getmembers():
-                if member.name == path and member.isdir():
-                    break
-            else:
-                return "No such directory"
-
-            total_size = 0
-            result = ""
-            for member in tar.getmembers():
-                if member.name.startswith(path):
-                    if not member.isfile():
-                        continue
-
-                    size = member.size
-                    name = "/" + "/".join(member.name.split("/")[2:])
-
-                    total_size += size
-                    result += f"{size}\t{name}" + "\n"
-
-            return result + f"Total size: {total_size} bytes"
-
     def clear(self):
-       self.console.print("\n" * 20)
+        self.console.print("\n" * 20)
 
     def chmod(self, permissions):
-        # Dummy function, implement permission change logic here
         self.console.print("chmod command executed with params: " + " ".join(permissions))
 
-    # --- Class methods ---
+    # --- Вспомогательные методы ---
 
     def get_path(self, path):
         path = path.split("/")
@@ -201,7 +110,7 @@ class NotBash:
             result_path = result_path.replace("//", "/")
         return result_path
 
-    def cmd_processing(self, command):
+    def perform_command(self, command):
         command = command.split(" ")
         match command[0]:
             case "ls":
@@ -241,7 +150,7 @@ class NotBash:
                 for line in script:
                     line = line.strip()
                     self.console.print(line)
-                    self.cmd_processing(line)
+                    self.perform_command(line)
 
     def run(self):
         start_cmds = threading.Thread(target=self.run_start_script)
@@ -251,5 +160,5 @@ class NotBash:
 
 
 if __name__ == "__main__":
-    not_bash = NotBash()
-    not_bash.run()
+    task = main()
+    task.run()

@@ -1,32 +1,37 @@
 import tkinter as tk
 from tkinter import scrolledtext
 
-
 class Console:
-    bg_color = "#2e2e2e"
-    text_color = "#ffffff"
-    prompt_color = "#00ff00"
-    prompt_user_color = "#00ff00"
-    prompt_path_color = "#00bfff"
 
     def __init__(self, cmd_callback):
-        self.cmd_callback = cmd_callback
-        self.path = "/"
+
+        self.task = cmd_callback
+        self.path = "" # "объявляем" переменную для пути, чтобы в основном классе можно было ее изменить
 
         self.root = tk.Tk()
-        self.root.title("Not Bash")
+        self.root.title("The emulator")
 
+        # Цвета
+        self.bg_color = "#ffffff"  # Белый фон
+        self.text_color = "#000000"  # Черный текст
+        self.prompt_user_color = "#006400"  # Имя пользователя
+        self.prompt_path_color = "#0000ff"  # Путь директории
+
+        # Создание виджета с прокручиваемым текстом
         self.console = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, height=20, width=70,
                                                  bg=self.bg_color, fg=self.text_color,
                                                  insertbackground=self.text_color)
+
         self.console.grid(row=0, column=0, padx=0, pady=0)
         self.console.bind('<Return>', self.execute_command)
         self.console.config(font=("Courier New", 12))
 
+        # создаем теги и определяем их цвет
         self.console.tag_configure("user", foreground=self.prompt_user_color)
         self.console.tag_configure("path", foreground=self.prompt_path_color)
 
     def execute_command(self, event):
+        # Выполнение команды при нажатии на Enter
         input_text = self.console.get("1.0", tk.END)
 
         command = input_text.split("\n")[-2].strip()
@@ -37,21 +42,25 @@ class Console:
             return
 
         self.console.insert(tk.END, "\n")
-        self.cmd_callback(command)
+        self.task(command)
 
         return "break"
 
     def print(self, text=""):
+        # Печать текста в консоль
         self.console.insert(tk.END, f"{text}\n")
 
     def insert_prompt(self):
-        self.console.insert(tk.END, "user@computer", "user")
+        # Вставка приглашения пользователя в консоль
+        self.console.insert(tk.END, f"{self.user}", "user")
         self.console.insert(tk.END, f":{self.path}", "path")
         self.console.insert(tk.END, "$ ")
         self.console.mark_set("insert", tk.END)
 
     def set_path(self, path):
+        # Установка текущего пути
         self.path = path
 
     def run(self):
+        # Запуск интерфейса
         self.root.mainloop()
