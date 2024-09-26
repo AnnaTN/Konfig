@@ -42,22 +42,20 @@ class main:
         return "\n".join(elems)
 
     def _cd(self, path):
-        self.path = self.path.replace("//", "/")
+        # функция либо изменит путь на нужный нам, либо сообщит об ошибке
+        if len(path) == 0:
+            return
 
         if isinstance(path, str):
             path = path.split("/")
 
-        if not path or (len(path) == 1 and path[0] == ""):
-            return
-
         if path[0] == "..":
-            if self.path != "/":
-                self.path = "/".join(self.path.split("/")[:-2]) + "/"
+            if self.path != "/": # если не главная директория
+                path_parts = self.path.split("/")[:-2]
+                self.path = "/".join(path_parts) + "/"
             return self._cd(path[1:])
 
-        if path[0] == ".":
-            return self._cd(path[1:])
-
+        # проверка существования заданной директории в архиве
         with tarfile.open(self.config["path_vm"], "r") as tar:
             for member in tar.getmembers():
                 if member.name == self.path + "/".join(path) and member.isdir():
@@ -108,34 +106,31 @@ class main:
 
     def perform_command(self, command):
         command = command.split(" ")
-        match command[0]:
-            case "ls":
-                self.console.print(self._ls(command[1] if len(command) > 1 else ""))
-            case "cd":
-                error = self._cd(command[1])
-                if error:
-                    self.console.print(error)
+        if command[0] ==  "ls":
+                if len(command) == 1: self.console.print(self._ls())
+                else: self.console.print(command[1])
 
-                new_path = self.path.replace(
-                    self.config["path_vm"].replace(".tar", ""), "")
-                self.console.set_path(new_path)
-            case "tail":
-                self.console.print(self._tail(command[1]))
-            case "du":
-                self.console.print(self._du(command[1] if len(command) > 1 else ""))
-            case "clear":
-                self.clear()
-            case "chmod":
-                if len(command) < 3:
-                    self.console.print("Usage: chmod <permissions> <file>")
-                else:
-                    self.chmod(command[1:])
-            case "exit":
-                self.console.insert_prompt()
-                self.console.root.quit()
-                return
-            case _:
-                self.console.print("Unknown command")
+        elif command[0] == "cd" and len(command) > 1:
+            error = self._cd(command[1])
+            if error:
+                self.console.print(error)
+            new_path = self.path.replace(self.config["path_vm"].replace(".tar", ""), "")
+            self.console.set_path(new_path)
+        elif command[0] == "tail":
+            self.console.print(self._tail(command[1]))
+        elif command[0] == "clear":
+           self.clear()
+        elif command[0] == "chmod":
+            if len(command) < 3:
+                self.console.print("Usage: chmod <permissions> <file>")
+            else:
+                self.chmod(command[1:])
+        elif command[0] == "exit":
+            self.console.insert_prompt()
+            self.console.root.quit()
+            return
+        else:
+            self.console.print("Unknown command")
 
         self.console.insert_prompt()
 
