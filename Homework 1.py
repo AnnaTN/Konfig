@@ -112,19 +112,21 @@ class main:
         elif command[0] == "cd" and len(command) > 1:
             self._cd(command[1])
 
-        elif command[0] == "tail":
-            self.console.print(self._tail(command[1]))
-        elif command[0] == "clear":
-           self.clear()
+        elif command[0] == "exit":
+            self.console.root.quit()
+
         elif command[0] == "chmod":
             if len(command) < 3:
                 self.console.print("Usage: chmod <permissions> <file>")
             else:
                 self.chmod(command[1:])
-        elif command[0] == "exit":
-            self.console.insert_prompt()
-            self.console.root.quit()
-            return
+
+        elif command[0] == "tail":
+            self.console.print(self._tail(command[1]))
+
+        elif command[0] == "clear":
+           self.clear()
+
         else:
             self.console.print("Unknown command")
 
