@@ -43,7 +43,7 @@ class main:
     def _cd(self, path):
 
         # устанавливаем путь для случая перехода в предыдущую директорию
-        if path == "..":
+        if path == ".." and self.path != "/":
             if self.path != "/": # если текущая директория не главная
                 path_parts = self.path.split("/")[:-2]
                 self.path = "/".join(path_parts) + "/"
@@ -63,10 +63,7 @@ class main:
                 self.console.print("No such directory")
 
         self.path += "/".join(path) + "/"
-        self.path = self.path.replace("//", "/")
-
-        new_path = self.path.replace(self.konf["path_vm"].replace(".tar", ""), "")
-        self.console.path = new_path
+        self.console.path = self.path.replace(self.konf["path_vm"].replace(".tar", ""), "")
 
     def _tail(self, path):
         path = self.get_path(path)[:-1]
@@ -151,4 +148,5 @@ class main:
 
 if __name__ == "__main__":
     task = main()
+    task.console.path = "/"
     task.run()
