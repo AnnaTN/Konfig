@@ -5,11 +5,11 @@ from console import Console  # Импортируем класс Console из д
 
 class main:
 
-    config = {
+    konf = {
         "path_vm": "", # путь к виртуальной файловой системе
         "start_script": "", # путь к стартовому скрипту
         "user": ""
-    }
+    }   
 
     def __init__(self):
         # указываем, что команда, переданная в кач-ве аргумента, будет передана методу perform_command для обработки
@@ -17,21 +17,20 @@ class main:
 
         # загрузка конфигурации
         with open('./konf.yaml') as f:
-            self.config = yaml.safe_load(f)
+            self.konf = yaml.safe_load(f)
 
         # установка пути и пользователя для консоли
-        self.path = self.config["path_vm"].replace(".tar", "") + "/"
-        self.console.user = self.config["user"]
+        self.path = self.konf["path_vm"].replace(".tar", "") + "/"
+        self.console.user = self.konf["user"]
 
 # Методы обработки команд
 
-    # команда ls
     def _ls(self, append_path=""):
         # получаем полный путь к директории, содержимое которой хотим вывести
         path = self.get_path(append_path)
         elems = []
 
-        with tarfile.open(self.config["path_vm"], "r") as tar:
+        with tarfile.open(self.konf["path_vm"], "r") as tar:
             # проходимся по всем членам исходного архива
             for member in tar.getmembers():
                 if member.name.startswith(path): # проверка, начинается ли имя с нужного пути
@@ -42,33 +41,36 @@ class main:
         return "\n".join(elems)
 
     def _cd(self, path):
-        # функция либо изменит путь на нужный нам, либо сообщит об ошибке
-        if len(path) == 0:
+
+        # устанавливаем путь для случая перехода в предыдущую директорию
+        if path == "..":
+            if self.path != "/": # если текущая директория не главная
+                path_parts = self.path.split("/")[:-2]
+                self.path = "/".join(path_parts) + "/"
+                self.console.path = self.path[len((self.konf["path_vm"].split("."))[0]):]
+                return
             return
 
         if isinstance(path, str):
             path = path.split("/")
 
-        if path[0] == "..":
-            if self.path != "/": # если не главная директория
-                path_parts = self.path.split("/")[:-2]
-                self.path = "/".join(path_parts) + "/"
-            return self._cd(path[1:])
-
         # проверка существования заданной директории в архиве
-        with tarfile.open(self.config["path_vm"], "r") as tar:
+        with tarfile.open(self.konf["path_vm"], "r") as tar:
             for member in tar.getmembers():
                 if member.name == self.path + "/".join(path) and member.isdir():
                     break
             else:
-                return "No such directory"
+                self.console.print("No such directory")
 
         self.path += "/".join(path) + "/"
         self.path = self.path.replace("//", "/")
 
+        new_path = self.path.replace(self.konf["path_vm"].replace(".tar", ""), "")
+        self.console.path = new_path
+
     def _tail(self, path):
         path = self.get_path(path)[:-1]
-        with tarfile.open(self.config["path_vm"], "r") as tar:
+        with tarfile.open(self.konf["path_vm"], "r") as tar:
             for member in tar.getmembers():
                 if member.name == path and member.isfile():
                     break
@@ -107,15 +109,12 @@ class main:
     def perform_command(self, command):
         command = command.split(" ")
         if command[0] ==  "ls":
-                if len(command) == 1: self.console.print(self._ls())
-                else: self.console.print(command[1])
+            if len(command) == 1: self.console.print(self._ls(""))
+            else: self.console.print(self._ls(command[1])) # вывод содержимого директорий, являющихся текущей директорией либо вложенной в нее
 
         elif command[0] == "cd" and len(command) > 1:
-            error = self._cd(command[1])
-            if error:
-                self.console.print(error)
-            new_path = self.path.replace(self.config["path_vm"].replace(".tar", ""), "")
-            self.console.set_path(new_path)
+            self._cd(command[1])
+
         elif command[0] == "tail":
             self.console.print(self._tail(command[1]))
         elif command[0] == "clear":
@@ -135,8 +134,8 @@ class main:
         self.console.insert_prompt()
 
     def run_start_script(self):
-        if self.config["start_script"]:
-            with open(self.config["start_script"], "r") as script:
+        if self.konf["start_script"]:
+            with open(self.konf["start_script"], "r") as script:
                 self.console.insert_prompt()
                 for line in script:
                     line = line.strip()

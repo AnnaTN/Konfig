@@ -57,10 +57,6 @@ class Console:
         self.console.insert(tk.END, "$ ")
         self.console.mark_set("insert", tk.END)
 
-    def set_path(self, path):
-        # Установка текущего пути
-        self.path = path
-
     def run(self):
         # Запуск интерфейса
         self.root.mainloop()
