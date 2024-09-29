@@ -3,16 +3,16 @@ import tarfile
 import yaml
 from console import Console  # Импортируем класс Console из другого файла
 
-class main:
+class Main:
+    all_f = []
 
     konf = {
-        "path_vm": "", # путь к виртуальной файловой системе
-        "start_script": "", # путь к стартовому скрипту
+        "path_vm": "",  # путь к виртуальной файловой системе
+        "start_script": "",  # путь к стартовому скрипту
         "user": ""
-    }   
+    }
 
     def __init__(self):
-        # указываем, что команда, переданная в кач-ве аргумента, будет передана методу perform_command для обработки
         self.console = Console(self.perform_command)
 
         # загрузка конфигурации
@@ -23,38 +23,37 @@ class main:
         self.path = self.konf["path_vm"].replace(".tar", "") + "/"
         self.console.user = self.konf["user"]
 
-# Методы обработки команд
 
-    def _ls(self, append_path=""):
-        # получаем полный путь к директории, содержимое которой хотим вывести
+        # Для хранения прав доступа к файлам
+        self.file_permissions = {}
+
+    # Методы обработки команд
+
+    def ls(self, append_path=""):
         path = self.get_path(append_path)
         elems = []
 
         with tarfile.open(self.konf["path_vm"], "r") as tar:
-            # проходимся по всем членам исходного архива
             for member in tar.getmembers():
-                if member.name.startswith(path): # проверка, начинается ли имя с нужного пути
-                    elem_name = member.name.split("/")[path.count("/")] # получаем имя конкретного файла
+                if member.name.startswith(path):
+                    elem_name = member.name.split("/")[path.count("/")]
                     if elem_name not in elems:
                         elems.append(elem_name)
 
         return "\n".join(elems)
 
-    def _cd(self, path):
-
-        # устанавливаем путь для случая перехода в предыдущую директорию
-        if path == ".." and self.path != "/":
-            if self.path != "/": # если текущая директория не главная
+    def cd(self, path):
+        if path == "..":
+            if self.path != "/" and self.console.path != "/":
                 path_parts = self.path.split("/")[:-2]
                 self.path = "/".join(path_parts) + "/"
-                self.console.path = self.path[len((self.konf["path_vm"].split("."))[0]):]
+                self.console.path = self.path[len("file_system"):]
                 return
             return
 
         if isinstance(path, str):
             path = path.split("/")
 
-        # проверка существования заданной директории в архиве
         with tarfile.open(self.konf["path_vm"], "r") as tar:
             for member in tar.getmembers():
                 if member.name == self.path + "/".join(path) and member.isdir():
@@ -65,7 +64,39 @@ class main:
         self.path += "/".join(path) + "/"
         self.console.path = self.path.replace(self.konf["path_vm"].replace(".tar", ""), "")
 
-    def _tail(self, path):
+    def chmod(self, com, file):
+        file_main = self.find_file(file)
+
+        if file_main is None:
+            return f"File '{file}' not found."
+
+        if com[0] in ['a', 'q', 'b'] and com[2] in ['r', 'w', 'x'] and com[1] in ['+', '-']:
+            who, oper, what = com[0], com[1], com[2]
+            num_who = ['a', 'q', 'b'].index(who)
+            num_what = ['r', 'w', 'x'].index(what)
+
+            flag = False
+            # Проверяем права доступа к файлу
+            if file not in self.file_permissions:
+                flag = True
+                self.file_permissions[file] = [1, 1, 1, 1, 1, 0, 0, 0, 0]  # по умолчанию все права разрешены
+
+            before = self.file_permissions[file][num_what]
+            print(self.file_permissions[file])
+            if oper == '+':
+                self.file_permissions[file][num_who * 3 + num_what] = 1
+            else:
+                self.file_permissions[file][num_who * 3 + num_what] = 0
+
+            # Проверяем, изменились ли права
+            print(self.file_permissions[file])
+            if before != self.file_permissions[file][num_what] or flag:
+                return "The rights have been successfully changed"
+            return "An error occurred when changing permissions"
+
+        return "The arguments were set incorrectly"
+
+    def tail(self, path):
         path = self.get_path(path)[:-1]
         with tarfile.open(self.konf["path_vm"], "r") as tar:
             for member in tar.getmembers():
@@ -82,8 +113,14 @@ class main:
     def clear(self):
         self.console.print("\n" * 20)
 
-    def chmod(self, permissions):
-        self.console.print("chmod command executed with params: " + " ".join(permissions))
+    def find_file(self, file):
+        with tarfile.open(self.konf["path_vm"], "r") as tar:
+            for member in tar.getmembers():
+                print(f"Checking member: {member.name}")  # Отладочный вывод
+                if member.name.endswith(file):
+                    return member.name
+        print(f"File '{file}' not found.")  # Отладочный вывод
+        return None
 
     # --- Вспомогательные методы ---
 
@@ -105,27 +142,29 @@ class main:
 
     def perform_command(self, command):
         command = command.split(" ")
-        if command[0] ==  "ls":
-            if len(command) == 1: self.console.print(self._ls(""))
-            else: self.console.print(self._ls(command[1])) # вывод содержимого директорий, являющихся текущей директорией либо вложенной в нее
+        if command[0] == "ls":
+            if len(command) == 1:
+                self.console.print(self.ls(""))
+            else:
+                self.console.print(self.ls(command[1]))
 
         elif command[0] == "cd" and len(command) > 1:
-            self._cd(command[1])
+            self.cd(command[1])
 
         elif command[0] == "exit":
             self.console.root.quit()
 
         elif command[0] == "chmod":
-            if len(command) < 3:
-                self.console.print("Usage: chmod <permissions> <file>")
+            if len(command) == 3:
+                self.console.print(self.chmod(command[1], command[2]))
             else:
-                self.chmod(command[1:])
+                self.console.print("The arguments were set incorrectly")
 
         elif command[0] == "tail":
-            self.console.print(self._tail(command[1]))
+            self.console.print(self.tail(command[1]))
 
         elif command[0] == "clear":
-           self.clear()
+            self.clear()
 
         else:
             self.console.print("Unknown command")
@@ -147,8 +186,13 @@ class main:
 
         self.console.run()
 
+    def check(elem1, elem2):
+        for j in range(min(len(elem1), len(elem2))):
+            if elem1[j] != elem2[j]:
+                return False
+        return True
 
 if __name__ == "__main__":
-    task = main()
+    task = Main()
     task.console.path = "/"
     task.run()
