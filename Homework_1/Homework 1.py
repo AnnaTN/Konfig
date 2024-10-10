@@ -30,7 +30,6 @@ class Main:
 
     def ls(self, append_path=""):
         path = self.get_append_path(append_path)
-        print(path)
 
         elems = []
 
@@ -101,8 +100,6 @@ class Main:
         with tarfile.open(self.konf["path_vm"], "r") as tar:
             for member in tar.getmembers():
                 # аходим нужный нам файл в архиве
-                print(member.name)
-                print("path  ", self.path, "   file   ", file)
                 if member.name.endswith(file) and member.name[:len(member.name) - len(file)] == self.path and member.isfile():
                     with tar.extractfile(member) as f: # октрываем для чтения
                         text = (line.decode("utf-8") for line in f) # одновременное чтение и декодирование
