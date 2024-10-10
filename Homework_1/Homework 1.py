@@ -61,6 +61,7 @@ class Main:
                     break
             else:
                 self.console.print("No such directory")
+                return
 
         self.path += "/".join(path) + "/"
         self.console.path = self.path.replace(self.konf["path_vm"].replace(".tar", ""), "")
