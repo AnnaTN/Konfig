@@ -1,0 +1,4 @@
+digraph G {
+    "react" -> "lodash"
+    "lodash" -> "lodash"
+}
