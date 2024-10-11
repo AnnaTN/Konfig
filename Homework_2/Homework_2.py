@@ -91,8 +91,8 @@ def run():
 
     # генерация изображения с помощью Graphviz
     try:
-        os.system(f'"{graphviz_path}" -Tpng {output_file} -o output.png')
-        print(f"Визуализация графа завершена, результат сохранен в 'output.png'.")
+        os.system(f'"{graphviz_path}" -Tpng {output_file} -o result_photo.png')
+        print(f"Визуализация графа завершена, результат сохранен в 'result_photo.png'.")
     except Exception as err:
         print(f"Ошибка выполнения Graphviz: {err}")
 
