@@ -3,49 +3,48 @@ import urllib.request
 import json
 import yaml
 
-
-def build_graphviz_code(dependency_graph):
-    """Создание кода Graphviz на основе графа зависимостей."""
-    code = "digraph Dependencies {\n"  # Начало Graphviz графа
-    for pkg, deps in dependency_graph.items():  # Проходим по каждому пакету и его зависимостям
-        for dep in deps:  # Проходим по каждой зависимости пакета
-            code += f'    "{pkg}" -> "{dep}"\n'  # Добавляем строку, которая определяет зависимость между двумя узлами
-    code += "}\n"  # Завершаем описание графа
-    return code  # Возвращаем сгенерированный код Graphviz
-
-
+def build_graphviz_code(dict_of_deps):
+    # создаем описание графа, которое будет выведено на экран и записано в файл
+    code_from_graph = "digraph Dependencies {\n"
+    for package, depends in dict_of_deps.items():  # проходим по каждому пакету и его зависимостям
+        for dep in depends:  # проходим по каждой зависимости пакета
+            code_from_graph += f'  "{package}" depends on "{dep}"\n'
+    code_from_graph += "}\n"
+    return code_from_graph
 
 def fetch_npm_dependencies(pkg_name):
-    """Получение зависимостей пакета с npm registry."""
-    npm_url = f'https://registry.npmjs.org/{pkg_name}'
+    # получение зависимостей пакета с npm registry
+    npm_url = f'https://registry.npmjs.org/{pkg_name}' # формируем URL для запроса к npm registry
     try:
-        with urllib.request.urlopen(npm_url) as response:
-            if response.status != 200:
+        with urllib.request.urlopen(npm_url) as response: # выполняем HTTP-запрос на получение информации о пакете
+            if response.status != 200: # проверка корректности статуса ответа
                 raise Exception(f"Ошибка получения данных пакета: {response.status}")
-            package_info = json.loads(response.read().decode())
-    except urllib.error.URLError as e:
+            package_info = json.loads(response.read().decode()) # читаем и декодируем JSON-ответ
+    except urllib.error.URLError as e: # ошибка сети / неверного URL
         raise Exception(f"Ошибка сети или неверный URL: {e}")
-    except json.JSONDecodeError:
+    except json.JSONDecodeError: # ошибка, связанная с JSON
         raise Exception("Ошибка разбора JSON ответа.")
 
-    latest_version = package_info['dist-tags']['latest']
-    return package_info['versions'][latest_version].get('dependencies', {})
+    latest_version = package_info['dist-tags']['latest'] # получение последней версии пакета
+    return package_info['versions'][latest_version].get('dependencies', {}) # возврат зависимостей пакета
 
 
-def resolve_dependencies(pkg_name, accumulated_deps):
-    """Рекурсивное получение зависимостей и их транзитивных зависимостей."""
-    if pkg_name in accumulated_deps:
-        return accumulated_deps
+def resolve_dependencies(pkg_name, dict_of_deps):
+    # получение зависимостей и их транзитивных зависимостей
+
+    if pkg_name in dict_of_deps:
+        return dict_of_deps
 
     try:
-        dependencies = fetch_npm_dependencies(pkg_name)
-        accumulated_deps[pkg_name] = dependencies
-        for dep in dependencies:
-            resolve_dependencies(dep, accumulated_deps)
+        dependencies = fetch_npm_dependencies(pkg_name)  # зависимости для текущего пакета
+        dict_of_deps[pkg_name] = dependencies
+        for dep in dependencies:  # рекурсивно проходим по каждой зависимости и собираем для нее свои зависимости
+            resolve_dependencies(dep, dict_of_deps)
+
     except Exception as e:
         print(f"Ошибка обработки пакета {pkg_name}: {e}")
-    return accumulated_deps
 
+    return dict_of_deps
 
 def write_to_file(file_path, data):
     """Запись данных в файл."""
