@@ -1,104 +1,108 @@
 import os
-import requests
+import urllib.request
+import json
 import yaml
 
 
-def generate_graphviz_code(graph):
-    """Генерация кода для Graphviz из графа зависимостей."""
-    graphviz_code = "digraph G {\n"
-    for package, deps in graph.items():
-        for dep in deps.keys():
-            graphviz_code += f'    "{package}" -> "{dep}"\n'
-    graphviz_code += "}\n"
-    return graphviz_code
+def build_graphviz_code(dependency_graph):
+    """Создание кода Graphviz на основе графа зависимостей."""
+    code = "digraph Dependencies {\n"  # Начало Graphviz графа
+    for pkg, deps in dependency_graph.items():  # Проходим по каждому пакету и его зависимостям
+        for dep in deps:  # Проходим по каждой зависимости пакета
+            code += f'    "{pkg}" -> "{dep}"\n'  # Добавляем строку, которая определяет зависимость между двумя узлами
+    code += "}\n"  # Завершаем описание графа
+    return code  # Возвращаем сгенерированный код Graphviz
 
 
-def get_npm_dependencies(package_name):
-    """Получение зависимостей пакета через запрос к npm registry."""
-    url = f'https://registry.npmjs.org/{package_name}'
-    response = requests.get(url)
 
-    if response.status_code != 200:
-        raise Exception(f"Не удалось получить данные пакета: {response.status_code}")
+def fetch_npm_dependencies(pkg_name):
+    """Получение зависимостей пакета с npm registry."""
+    npm_url = f'https://registry.npmjs.org/{pkg_name}'
+    try:
+        with urllib.request.urlopen(npm_url) as response:
+            if response.status != 200:
+                raise Exception(f"Ошибка получения данных пакета: {response.status}")
+            package_info = json.loads(response.read().decode())
+    except urllib.error.URLError as e:
+        raise Exception(f"Ошибка сети или неверный URL: {e}")
+    except json.JSONDecodeError:
+        raise Exception("Ошибка разбора JSON ответа.")
 
-    package_data = response.json()
-    latest_version = package_data['dist-tags']['latest']
-    dependencies = package_data['versions'][latest_version].get('dependencies', {})
-    return dependencies
+    latest_version = package_info['dist-tags']['latest']
+    return package_info['versions'][latest_version].get('dependencies', {})
 
 
-def get_transitive_dependencies(package_name, collected):
-    """Рекурсивное получение зависимостей, включая транзитивные."""
-    if package_name in collected:
-        return collected
+def resolve_dependencies(pkg_name, accumulated_deps):
+    """Рекурсивное получение зависимостей и их транзитивных зависимостей."""
+    if pkg_name in accumulated_deps:
+        return accumulated_deps
 
     try:
-        dependencies = get_npm_dependencies(package_name)
-        collected[package_name] = dependencies
+        dependencies = fetch_npm_dependencies(pkg_name)
+        accumulated_deps[pkg_name] = dependencies
         for dep in dependencies:
-            get_transitive_dependencies(dep, collected)
-        return collected
+            resolve_dependencies(dep, accumulated_deps)
     except Exception as e:
-        print(f"Ошибка при обработке {package_name}: {e}")
-        return collected
+        print(f"Ошибка обработки пакета {pkg_name}: {e}")
+    return accumulated_deps
 
 
-def save_output_to_file(output_path, content):
-    """Сохранение сгенерированного кода в файл."""
+def write_to_file(file_path, data):
+    """Запись данных в файл."""
     try:
-        with open(output_path, 'w') as f:
-            f.write(content)
-        print(f"Результат сохранен в {output_path}")
-    except Exception as e:
-        print(f"Ошибка при сохранении в файл: {e}")
+        with open(file_path, 'w') as file:
+            file.write(data)
+        print(f"Данные успешно сохранены в {file_path}")
+    except IOError as err:
+        print(f"Ошибка записи файла: {err}")
 
 
-def main():
-    # Чтение конфигурации из YAML файла
-    config_file = 'hw_2.yaml'
+def run():
+    # Чтение данных конфигурации
+    config_filename = 'hw_2.yaml'
     try:
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
+        with open(config_filename, 'r') as config_file:
+            settings = yaml.safe_load(config_file)
     except FileNotFoundError:
-        print(f"Файл конфигурации {config_file} не найден.")
+        print(f"Файл конфигурации {config_filename} не найден.")
         return
-    except yaml.YAMLError as e:
-        print(f"Ошибка при чтении YAML файла: {e}")
-        return
-
-    # Чтение параметров из YAML файла
-    graphviz_path = config.get('graphviz_path')
-    package_name = config.get('package_name')
-    output_path = config.get('path_to_result_file')
-
-    if not all([graphviz_path, package_name, output_path]):
-        print("Ошибка: Проверьте, что все необходимые поля (graphviz_path, package_name, path_to_result_file) заданы в YAML файле.")
+    except yaml.YAMLError as err:
+        print(f"Ошибка разбора YAML файла: {err}")
         return
 
-    # Получение всех зависимостей, включая транзитивные
-    print(f"Получение зависимостей для пакета {package_name}...")
-    all_dependencies = get_transitive_dependencies(package_name, {})
+    # Извлечение параметров конфигурации
+    graphviz_bin = settings.get('graphviz_path')
+    npm_package = settings.get('package_name')
+    output_file = settings.get('path_to_result_file')
 
-    # Генерация кода Graphviz
-    graphviz_code = generate_graphviz_code(all_dependencies)
+    if not all([graphviz_bin, npm_package, output_file]):
+        print("Ошибка: Убедитесь, что все обязательные поля указаны в конфигурации (graphviz_path, package_name, path_to_result_file).")
+        return
 
-    # Вывод кода на экран
-    print("Сгенерированный код Graphviz:")
-    print(graphviz_code)
+    # Получение зависимостей пакета
+    print(f"Получение зависимостей пакета {npm_package}...")
+    dependencies = resolve_dependencies(npm_package, {})
 
-    # Сохранение кода в файл
-    save_output_to_file(output_path, graphviz_code)
+    # Генерация Graphviz кода
+    graphviz_output = build_graphviz_code(dependencies)
 
-    # Выполнение программы Graphviz для генерации визуализации (если нужно)
-    if os.path.exists(graphviz_path):
+    # Отображение кода
+    print("Сгенерированный Graphviz код:")
+    print(graphviz_output)
+
+    # Запись кода в файл
+    write_to_file(output_file, graphviz_output)
+
+    # Генерация изображения с помощью Graphviz, если указано
+    if os.path.exists(graphviz_bin):
         try:
-            os.system(f'"{graphviz_path}" -Tpng {output_path} -o output.png')
-            print(f"Граф был успешно визуализирован и сохранен в 'output.png'.")
-        except Exception as e:
-            print(f"Ошибка при визуализации: {e}")
+            os.system(f'"{graphviz_bin}" -Tpng {output_file} -o output.png')
+            print(f"Визуализация графа завершена, результат сохранен в 'output.png'.")
+        except Exception as err:
+            print(f"Ошибка выполнения Graphviz: {err}")
     else:
-        print(f"Путь к Graphviz не найден: {graphviz_path}")
+        print(f"Путь к Graphviz не найден: {graphviz_bin}")
 
 
 if __name__ == '__main__':
-    main()
+    run()
