@@ -1,0 +1,43 @@
+{#
+Начало
+2 строка 1 комментария
+#}
+
+app_name is "MyApp"
+version is 1.0
+
+settings is struct {
+  debug is true
+  max_connections is 100
+}
+
+{#
+комментарий в середине
+2 строка комментария в середине
+#}
+
+max_users is 50
+
+{#
+прибавим 10 к max_users
+#}
+
+threshold_expression = 60
+
+{#
+умножим max_connections на 2
+#}
+
+vers = 200
+
+{#
+вычтем из max_connections 3
+#}
+
+vers_2 = 197
+minus is -1
+minus_2 = 1
+
+{#
+комментарий в конце
+#}
