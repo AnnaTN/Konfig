@@ -3,12 +3,19 @@
 2 строка 1 комментария
 #}
 
-app_name is "MyApp"
-version is 1.0
+line_1 is "try_to_write_a_line"
+num_1 is 1.0
+num_2 is 20
+perem_1 is true
 
-settings is struct {
-  debug is true
-  max_connections is 100
+{#
+словарь
+#}
+
+
+dict is struct {
+  num_from_dict is 15
+  perem_from_dict is false
 }
 
 {#
@@ -16,28 +23,37 @@ settings is struct {
 2 строка комментария в середине
 #}
 
-max_users is 50
+num_3 is 50
 
 {#
-прибавим 10 к max_users
+прибавим 10 к num_3 и сохраним в новую переменную res
 #}
 
 res = 60
 
 {#
-умножим max_connections на 2
+умножим num_3 на 2 и сохраним в ту же переменную num_3
 #}
 
-vers = 200
+num_3 = 120
 
 {#
-вычтем из max_connections 3
+вычтем из num_3 3 и сохраним результат в новую переменную vers
 #}
 
-vers = 197
+vers = 117
+
+{#
+отрицательное число
+#}
+
 minus is -1
+
+{#
+пересохраним в ту же переменную модуль числа из minus
+#}
+
 minus = 1
-per = "h"
 
 {#
 комментарий в конце
