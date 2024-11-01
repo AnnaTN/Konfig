@@ -1,25 +1,30 @@
 # Начало
 # 2 строка 1 комментария
-app_name = "MyApp"
-version = 1.0
+line_1 = "try_to_write_a_line"
+num_1 = 1.0
+num_2 = 20
+perem_1 = true
 
-[settings]
-debug = true
-max_connections = 100
+# словарь
+[dict]
+num_from_dict = 15
+perem_from_dict = false
 
 # комментарий в середине
 # 2 строка комментария в середине
 
-max_users = 50
+num_3 = 50
+# прибавим 10 к num_3 и сохраним в новую переменную res
+res = "!(+ num_3 10)"
 
-# прибавим 10 к max_users
-res = "!(+ max_users 10)"
-# умножим max_connections на 2
-vers = "!(* max_connections 2)"
-# вычтем из max_connections 3
-vers = "!(- max_connections 3)"
+# умножим num_3 на 2 и сохраним в ту же переменную num_3
+num_3 = "!(* num_3 2)"
+# вычтем из num_3 3 и сохраним результат в новую переменную vers
+vers = "!(- num_3 3)"
 
+# отрицательное число
 minus = -1
+# пересохраним в ту же переменную модуль числа из minus
 minus = "!(abs minus)"
 
 # комментарий в конце

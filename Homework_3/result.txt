@@ -37,6 +37,7 @@ vers = 200
 vers = 197
 minus is -1
 minus = 1
+per = "h"
 
 {#
 комментарий в конце

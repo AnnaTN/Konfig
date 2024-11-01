@@ -86,6 +86,8 @@ def main(input_file, output_file):
             file.write(i)
             file.write('\n')
 
+# C:\Users\Анна\PycharmProjects\Konfig\Homework_3\main.py -i C:\Users\Анна\PycharmProjects\Konfig\Homework_3\file.toml -o C:\Users\Анна\PycharmProjects\Konfig\Homework_3\result.txt
+
 # Обработка аргументов командной строки
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
