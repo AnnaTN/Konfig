@@ -13,13 +13,13 @@ max_connections = 100
 max_users = 50
 
 # прибавим 10 к max_users
-threshold_expression = "!(+ max_users 10)"
+res = "!(+ max_users 10)"
 # умножим max_connections на 2
 vers = "!(* max_connections 2)"
 # вычтем из max_connections 3
-vers_2 = "!(- max_connections 3)"
+vers = "!(- max_connections 3)"
 
 minus = -1
-minus_2 = "!(abs minus)"
+minus = "!(abs minus)"
 
 # комментарий в конце

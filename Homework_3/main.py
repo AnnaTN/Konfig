@@ -46,7 +46,6 @@ def convert_toml(inf_from_toml):
                 value = value[:value.index(')')]
                 num = int(value) if value.isdigit() else float(value)
 
-            print(i.split()[2][-1])
             if i.split()[2][-1] == '+':
                 dict[i.split()[-2]] = dict[i.split()[-2]] + num
             elif i.split()[2][-1] == '*':
@@ -66,16 +65,11 @@ def convert_toml(inf_from_toml):
             # регулярное выр-ие для чисел
             if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(-?\d+(\.\d+)?|-?\d*\.\d+)\s*$', i):
                 value = i.split()[-1]
-                #dict[i.split()[0]] = int(value) if value.isdigit() else float(value)
-                if re.match(r'^-?\d+(\.\d+)?$', value):  # Проверка для целых и дробных чисел, включая отрицательные
+                if re.match(r'^-?\d+(\.\d+)?$', value):
                     dict[i.split()[0]] = float(value) if '.' in value else int(value)
-                else:
-                    # Обработка других типов значений (строк и булевых)
-                    dict[i.split()[0]] = value
         elif flag and i == "":
             flag = False
             result.append("}")
-    print(dict)
     return result
 
 
