@@ -12,7 +12,6 @@ perem_1 is true
 словарь
 #}
 
-
 dict is struct {
   num_from_dict is 15
   perem_from_dict is false
