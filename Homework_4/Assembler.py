@@ -1,94 +1,97 @@
 import struct
-import sys
-
-def assemble_command(command):
-    parts = command.split()
-    op_code = int(parts[0])  # Получаем код операции
-
-    binary_command = None
-
-    if op_code == 192:  # Загрузка константы
-        A = op_code
-        B = int(parts[1])
-        C = int(parts[2])
-        # Формат команды: [A, B, C], 5 байт
-        binary_command = struct.pack('BII', A, B, C)
-
-    elif op_code == 247:  # Чтение значения из памяти
-        A = op_code
-        B = int(parts[1])
-        C = int(parts[2])
-        # Формат команды: [A, B, C], 5 байт
-        binary_command = struct.pack('BII', A, B, C)
-
-    elif op_code == 115:  # Запись значения в память
-        A = op_code
-        B = int(parts[1])
-        C = int(parts[2])
-        D = int(parts[3])
-        # Формат команды: [A, B, C, D], 5 байт
-        binary_command = struct.pack('BIII', A, B, C, D)
-
-    elif op_code == 83:  # Бинарная операция "<="
-        A = op_code
-        B = int(parts[1])
-        C = int(parts[2])
-        D = int(parts[3])
-        E = int(parts[4])
-        # Формат команды: [A, B, C, D, E], 5 байт
-        binary_command = struct.pack('BIIII', A, B, C, D, E)
-
-    else:
-        raise ValueError(f"Неизвестный код операции: {op_code}")
-
-    return binary_command
+import argparse
+import json
 
 
-def assemble(input_file, output_file, log_file):
-    commands = []
-    # Открываем входной файл и считываем команды
-    with open(input_file, 'r') as infile:
-        for line in infile:
-            # обработка каждой строки
-            line = line.strip()  # если нужно убрать символ новой строки
-            commands.append(line)
-    print(commands)
+class Assembler:
+    def __init__(self, input_file, output_file, log_file):
+        self.input_file = input_file
+        self.output_file = output_file
+        self.log_file = log_file
 
-    # Создадим список для логирования команд
-    log_data = []
+    def assemble(self):
+        logs = []  # Список для хранения логов
+        with open(self.input_file, 'r') as infile, open(self.output_file, 'wb') as outfile:
+            for line in infile:
+                if line.startswith("#"):
+                    continue  # Пропуск комментариев
+                if not line.strip():
+                    continue  # Пропуск пустых строк
 
-    # Открываем выходной файл для записи бинарных данных
-    with open(output_file, 'wb') as outfile:
-        for command in commands:
-            # Собираем бинарные данные для команды
-            binary_command = assemble_command(command)
+                parts = line.strip().split()
+                if len(parts) == 3:
+                    A = int(parts[0])  # Опкод
+                    B = int(parts[1])  # Адрес регистра
+                    C = int(parts[2])  # Константа
+                    command = self.create_command(A, B, C)
+                    if command:
+                        outfile.write(command)
+                        logs.append({'opcode': A, 'reg_address': B, 'constant': C, 'command': command.hex()})
+                elif len(parts) == 4:
+                    A = int(parts[0])  # Опкод
+                    B = int(parts[1])  # Адрес регистра
+                    C = int(parts[2])  # Адрес для чтения/записи
+                    D = int(parts[3])  # Смещение
+                    command = self.create_command(A, B, C, D)
+                    if command:
+                        outfile.write(command)
+                        logs.append({'opcode': A, 'reg_address': B, 'constant': C, 'address': D, 'command': command.hex()})
+                elif len(parts) == 5:
+                    A = int(parts[0])  # Опкод
+                    B = int(parts[1])  # Адрес регистра
+                    C = int(parts[2])  # Адрес регистра первого операнда
+                    D = int(parts[3])  # Адрес с суммой для второго операнда
+                    E = int(parts[4])  # Смещение второго операнда
+                    command = self.create_command(A, B, C, D, E)
+                    if command:
+                        outfile.write(command)
+                        logs.append({'opcode': A, 'reg_address': B, 'operands': (C, D, E), 'command': command.hex()})
 
-            # Записываем команду в файл
-            outfile.write(binary_command)
+        # Сохраняем лог в формате JSON
+        with open(self.log_file, 'w') as log_file:
+            json.dump(logs, log_file, indent=4)
+            print(f"Лог команд сохранен в {self.log_file}")
 
-            # Формируем строку для лога в формате "0xC0, 0x29, 0xE3, 0x00, 0x00"
-            log_string = ", ".join([f"0x{byte:02X}" for byte in binary_command])
-            print(command, binary_command)
-            # Добавляем запись в список
-            log_data.append(f"Тест ({command}):\n{log_string}")
+    def create_command(self, A, B, C, D=None, E=None):
+        # Собираем команду в зависимости от опкода
+        if A == 192:  # Загрузка константы
+            return self.create_command_load_constant(B, C)
+        elif A == 247:  # Чтение значения из памяти
+            return self.create_command_read_memory(B, C)
+        elif A == 115:  # Запись значения в память
+            return self.create_command_write_memory(B, C, D)
+        elif A == 83:  # Бинарная операция "<="
+            return self.create_command_binary_op(B, C, D, E)
+        else:
+            return None
 
-    # Записываем лог в текстовый файл с правильной кодировкой UTF-8
-    with open(log_file, 'w', encoding='utf-8') as log_text:
-        log_text.write("\n\n".join(log_data))
+    def create_command_load_constant(self, B, C):
+        # Создание команды для загрузки константы
+        b_and_c = (B & 0x7F) | ((C >> 7) & 0x80)  # 7 бит для B, 1 бит для старшего бита C
+        c_low = C & 0xFF  # Младшие 8 бит C
+        c_high = (C >> 8) & 0xFF  # Старшие 6 бит C
+        return struct.pack("BBBBB", 192, b_and_c, c_low, c_high, 0)  # Пятый байт всегда 0
 
+    def create_command_read_memory(self, B, C):
+        # Чтение значения из памяти
+        return struct.pack("BBBBB", 247, B, C & 0xFF, (C >> 8) & 0xFF, 0)
 
-def main():
-    if len(sys.argv) != 4:
-        print("Usage: python assembler.py <input_file> <output_file> <log_file>")
-        sys.exit(1)
+    def create_command_write_memory(self, B, C, D):
+        # Запись значения в память
+        return struct.pack("BBBBB", 115, B, C, D & 0xFF, (D >> 8) & 0xFF)
 
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
-    log_file = sys.argv[3]
-
-    assemble(input_file, output_file, log_file)
-    print(f"Assembly completed. Binary output saved to {output_file} and log saved to {log_file}")
+    def create_command_binary_op(self, B, C, D, E):
+        # Бинарная операция "<="
+        return struct.pack("BBBBB", 83, B, C, D, E)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file", help="путь к входному файлу")
+    parser.add_argument("output_file", help="путь к выходному бинарному файлу")
+    parser.add_argument("log_file", help="путь к файлу лога")
+
+    args = parser.parse_args()
+
+    assembler = Assembler(args.input_file, args.output_file, args.log_file)
+    assembler.assemble()
