@@ -3,9 +3,9 @@ import argparse
 import json
 
 class Assembler:
-    def __init__(self, input_file, output_file, log_file):
+    def __init__(self, input_file, bin_out_file, log_file):
         self.input_file = input_file
-        self.output_file = output_file
+        self.bin_out_file = bin_out_file
         self.log_file = log_file
 
     def create_command(self, A, B, C, D=None, E=None):
@@ -55,14 +55,16 @@ class Assembler:
                     line = self.create_for_log(a, b, c, d, e, command)
                     logs.append(line)
 
-        with open(self.output_file, 'wb') as outfile:
+        with open(self.bin_out_file, 'wb') as outfile:
             for command in commands:
                 outfile.write(command)
             print("Бинарный файл был успешно записан.")
+            print(f'Путь к файлу: {self.bin_out_file}')
 
         with open(self.log_file, 'w') as log_file:
             json.dump(logs, log_file, indent=2)
             print(f"Файл-лог был успешно записан.")
+            print(f'Путь к файлу: {self.log_file}')
 
     def create_for_log(self, A, B, C, D, E, command):
         line = ""
@@ -89,9 +91,9 @@ class Assembler:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_file")
-    parser.add_argument("output_file")
+    parser.add_argument("bin_out_file")
     parser.add_argument("log_file")
 
     args = parser.parse_args()
-    assembler = Assembler(args.input_file, args.output_file, args.log_file)
+    assembler = Assembler(args.input_file, args.bin_out_file, args.log_file)
     assembler.main_assem()

@@ -1,13 +1,12 @@
-import xml.etree.ElementTree as ET
 import struct
 import argparse
-
+import json
 
 class Interpreter:
     def __init__(self, binary_file, result_file, memory_range):
         self.binary_file = binary_file
         self.result_file = result_file
-        self.memory = [0] * memory_range[1]  # ячейки памяти
+        self.memory = [0] * (1 + memory_range[1])  # ячейки памяти
         self.memory_range = memory_range
 
     def run(self):
@@ -16,6 +15,16 @@ class Interpreter:
                 args = struct.unpack("BBBBB", command)
                 print(f"Распакованные аргументы: {args}")
                 self.execute_command(args)
+
+        result = {} # апись результатов
+
+        for i in range(self.memory_range[0], self.memory_range[1] + 1):
+            result[i] = self.memory[i]
+
+        with open(self.result_file, 'w') as json_file:
+            json.dump(result, json_file, indent=2)
+            print(f"Результат с диапазоном памяти УВМ был успешно записан в файл.")
+            print(f'Путь к файлу: {self.result_file}')
 
     def execute_command(self, args):
         a, b, c, d, e = args
