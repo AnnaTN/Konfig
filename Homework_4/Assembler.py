@@ -9,12 +9,16 @@ class Assembler:
         self.log_file = log_file
 
     def create_command(self, A, B, C, D=None, E=None):
+        # Загрузка константы
         if A == 192:
             return self.create_command_load_constant(B, C)
+        # Чтение значения из памяти
         elif A == 247:
             return self.create_command_read_memory(B, C)
+        # Запись значения в память
         elif A == 115:
             return self.create_command_write_memory(B, C, D)
+        # Бинарная операция "<="
         elif A == 83:
             return self.create_command_binary_op(B, C, D, E)
         else:
