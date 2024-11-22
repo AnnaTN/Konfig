@@ -9,15 +9,12 @@ class Assembler:
         self.output_file = output_file
         self.log_file = log_file
 
-    def assemble(self):
-        logs = []  # Список для хранения логов
-        with open(self.input_file, 'r') as infile, open(self.output_file, 'wb') as outfile:
-            for line in infile:
-                if line.startswith("#"):
-                    continue  # Пропуск комментариев
-                if not line.strip():
-                    continue  # Пропуск пустых строк
+    def main_assem(self):
+        logs = []
+        commands = []
 
+        with open(self.input_file, 'r') as infile:
+            for line in infile:
                 parts = line.strip().split()
                 if len(parts) == 3:
                     A = int(parts[0])  # Опкод
@@ -25,8 +22,10 @@ class Assembler:
                     C = int(parts[2])  # Константа
                     command = self.create_command(A, B, C)
                     if command:
-                        outfile.write(command)
-                        logs.append({'opcode': A, 'reg_address': B, 'constant': C, 'command': command.hex()})
+                        commands.append(command)  # Добавляем команду в список
+                        line = self.create_for_log(A, B, C, 0, 0, command)
+                        logs.append(line)
+
                 elif len(parts) == 4:
                     A = int(parts[0])  # Опкод
                     B = int(parts[1])  # Адрес регистра
@@ -34,8 +33,10 @@ class Assembler:
                     D = int(parts[3])  # Смещение
                     command = self.create_command(A, B, C, D)
                     if command:
-                        outfile.write(command)
-                        logs.append({'opcode': A, 'reg_address': B, 'constant': C, 'address': D, 'command': command.hex()})
+                        commands.append(command)
+                        line = self.create_for_log(A, B, C, D, 0, command)
+                        logs.append(line)
+
                 elif len(parts) == 5:
                     A = int(parts[0])  # Опкод
                     B = int(parts[1])  # Адрес регистра
@@ -44,26 +45,39 @@ class Assembler:
                     E = int(parts[4])  # Смещение второго операнда
                     command = self.create_command(A, B, C, D, E)
                     if command:
-                        outfile.write(command)
-                        logs.append({'opcode': A, 'reg_address': B, 'operands': (C, D, E), 'command': command.hex()})
+                        commands.append(command)
+                        line = self.create_for_log(A, B, C, D, E, command)
+                        logs.append(line)
 
-        # Сохраняем лог в формате JSON
+        # Запись всех команд в файл за один раз
+        with open(self.output_file, 'wb') as outfile:
+            for command in commands:
+                outfile.write(command)
+
+        # Запись лога в JSON файл
         with open(self.log_file, 'w') as log_file:
             json.dump(logs, log_file, indent=4)
             print(f"Лог команд сохранен в {self.log_file}")
 
+    def create_for_log(self, A, B, C, D, E, command):
+        line = ""
+        for i in range(0, 9, 2):
+            line += "0x" + command.hex()[i:i + 2] + " "
+        return f'Data: {A}, {B}, {C}, {D}, {E}; Commands: {line.strip()}'
+
+
     def create_command(self, A, B, C, D=None, E=None):
-        # Собираем команду в зависимости от опкода
-        if A == 192:  # Загрузка константы
-            return self.create_command_load_constant(B, C)
-        elif A == 247:  # Чтение значения из памяти
-            return self.create_command_read_memory(B, C)
-        elif A == 115:  # Запись значения в память
-            return self.create_command_write_memory(B, C, D)
-        elif A == 83:  # Бинарная операция "<="
-            return self.create_command_binary_op(B, C, D, E)
-        else:
-            return None
+            # Собираем команду в зависимости от опкода
+            if A == 192:  # Загрузка константы
+                return self.create_command_load_constant(B, C)
+            elif A == 247:  # Чтение значения из памяти
+                return self.create_command_read_memory(B, C)
+            elif A == 115:  # Запись значения в память
+                return self.create_command_write_memory(B, C, D)
+            elif A == 83:  # Бинарная операция "<="
+                return self.create_command_binary_op(B, C, D, E)
+            else:
+                return None
 
     def create_command_load_constant(self, B, C):
         # Создание команды для загрузки константы
@@ -87,11 +101,10 @@ class Assembler:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", help="путь к входному файлу")
-    parser.add_argument("output_file", help="путь к выходному бинарному файлу")
-    parser.add_argument("log_file", help="путь к файлу лога")
+    parser.add_argument("input_file")
+    parser.add_argument("output_file")
+    parser.add_argument("log_file")
 
     args = parser.parse_args()
-
     assembler = Assembler(args.input_file, args.output_file, args.log_file)
-    assembler.assemble()
+    assembler.main_assem()

@@ -13,7 +13,6 @@ class Interpreter:
     def run(self):
         with open(self.binary_file, 'rb') as file:
             while command := file.read(5):  # Чтение 5 байт для каждой команды
-                print(f"Команда: {command}")
                 args = struct.unpack("BBBBB", command)
                 print(f"Распакованные аргументы: {args}")
                 self.execute_command(args)
@@ -34,7 +33,6 @@ class Interpreter:
 
         # Объединение старших и младших 8 бит для константы
         constant = (d << 8) | c
-        print(f"Обрабатываем команду с опкодом {a}, регистр {b}, константа {constant}")
 
         if a == 192:  # Загрузка константы
             self.memory[b] = constant
@@ -83,9 +81,9 @@ class Interpreter:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", help="путь к входному бинарному файлу")
-    parser.add_argument("output_file", help="путь к выходному файлу для результата (XML)")
-    parser.add_argument("memory_range", nargs=2, type=int, help="диапазон памяти для вывода результата (начальный и конечный адрес)")
+    parser.add_argument("input_file")
+    parser.add_argument("output_file")
+    parser.add_argument("memory_range", nargs=2, type=int)
 
     args = parser.parse_args()
 
